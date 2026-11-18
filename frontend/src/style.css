@@ -791,3 +791,38 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================================================
+   8. RAINHAS MINADAS
+   Este bloco fica FORA das camadas (@layer) de propósito: estilos fora de
+   camada vencem os de dentro, então estas regras substituem as do Sudoku
+   (grade 9x9 fixa e linhas grossas dos blocos 3x3) sem precisar apagá-las.
+   O Elm informa o tamanho do tabuleiro na variável --size.
+   ========================================================================== */
+
+.board {
+  grid-template-columns: repeat(var(--size, 9), 1fr);
+  grid-template-rows: repeat(var(--size, 9), 1fr);
+}
+
+.board .cell {
+  font-size: calc(100cqi / var(--size, 9) * 0.5);
+  border-right: var(--board-line-thin) solid var(--board-line-color);
+  border-bottom: var(--board-line-thin) solid var(--board-line-color);
+}
+
+/* O X é só um lembrete do jogador: menor e apagado. */
+.cell--cross .cell-value {
+  font-size: 0.6em;
+  opacity: 0.35;
+}
+
+/* Pista já satisfeita (o número certo de rainhas ao redor): fica apagada. */
+.cell--clue-done .cell-value {
+  opacity: 0.4;
+}
+
+.queen-counter {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
