@@ -1,4 +1,4 @@
-"""API HTTP do Sudoku.
+"""API HTTP do Rainhas Minadas.
 
 Esta camada é só "cola": recebe JSON, valida o formato com Pydantic, chama o
 Prolog (via app/prolog.py) e devolve JSON. Nenhuma regra do jogo mora aqui.
@@ -16,59 +16,72 @@ from pydantic import BaseModel, Field
 
 from app import prolog
 
-app = FastAPI(title="Sudoku (Prolog + Elm)")
+app = FastAPI(title="Rainhas Minadas (Prolog + Elm)")
 
-# Uma linha tem exatamente 9 inteiros de 0 a 9; um tabuleiro tem 9 linhas.
-# O Pydantic rejeita automaticamente (erro 422) qualquer coisa fora disso.
-Cell = Annotated[int, Field(ge=0, le=9)]
-Row = Annotated[list[Cell], Field(min_length=9, max_length=9)]
-Grid = Annotated[list[Row], Field(min_length=9, max_length=9)]
+# O tabuleiro tem de 4 a 8 linhas. Se não for quadrado, quem recusa é o
+# Prolog (o puzzle fica sem solução).
+SIZE = Field(min_length=4, max_length=8)
+
+# Puzzle: -1 é casa sem pista; de 0 a 8 é uma pista.
+ClueCell = Annotated[int, Field(ge=-1, le=8)]
+PuzzleGrid = Annotated[list[Annotated[list[ClueCell], SIZE]], SIZE]
+
+# Rainhas: 1 onde há rainha, 0 onde não há.
+QueenCell = Annotated[int, Field(ge=0, le=1)]
+QueenGrid = Annotated[list[Annotated[list[QueenCell], SIZE]], SIZE]
 
 
 class GenerateRequest(BaseModel):
     difficulty: Literal["easy", "medium", "hard"] = "medium"
 
 
-class BoardRequest(BaseModel):
-    board: Grid
+class PuzzleRequest(BaseModel):
+    puzzle: PuzzleGrid
 
 
-class BoardResponse(BaseModel):
-    board: Grid
+class PuzzleResponse(BaseModel):
+    puzzle: PuzzleGrid
+
+
+class HintRequest(BaseModel):
+    puzzle: PuzzleGrid
+    queens: QueenGrid
+
+
+class QueensResponse(BaseModel):
+    queens: QueenGrid
 
 
 class HintResponse(BaseModel):
     row: int
     col: int
-    value: int
 
 
 # Mensagens que o Elm mostra na tela quando a resposta é 422.
-NO_SOLUTION = "Este tabuleiro não tem solução. Confira os números preenchidos."
-BOARD_COMPLETE = "O tabuleiro já está completo."
+NO_SOLUTION = "Este puzzle não tem solução."
+WRONG_QUEEN = "Alguma rainha está no lugar errado: com ela, não há solução."
+BOARD_COMPLETE = "Todas as rainhas já estão no lugar certo."
 
 
 @app.post("/api/generate")
-def generate(request: GenerateRequest) -> BoardResponse:
-    return BoardResponse(board=prolog.generate(request.difficulty))
+def generate(request: GenerateRequest) -> PuzzleResponse:
+    return PuzzleResponse(puzzle=prolog.generate(request.difficulty))
 
 
 @app.post("/api/solve")
-def solve(request: BoardRequest) -> BoardResponse:
+def solve(request: PuzzleRequest) -> QueensResponse:
     try:
-        return BoardResponse(board=prolog.solve(request.board))
+        return QueensResponse(queens=prolog.solve(request.puzzle))
     except prolog.NoSolution:
-        # `from None` diz que a HTTPException SUBSTITUI a exceção original,
-        # em vez de ser "causada" por ela; o traceback fica mais limpo.
         raise HTTPException(status_code=422, detail=NO_SOLUTION) from None
 
 
 @app.post("/api/hint")
-def hint(request: BoardRequest) -> HintResponse:
+def hint(request: HintRequest) -> HintResponse:
     try:
-        row, col, value = prolog.hint(request.board)
+        row, col = prolog.hint(request.puzzle, request.queens)
     except prolog.NoSolution:
-        raise HTTPException(status_code=422, detail=NO_SOLUTION) from None
+        raise HTTPException(status_code=422, detail=WRONG_QUEEN) from None
     except prolog.BoardComplete:
         raise HTTPException(status_code=422, detail=BOARD_COMPLETE) from None
-    return HintResponse(row=row, col=col, value=value)
+    return HintResponse(row=row, col=col)
