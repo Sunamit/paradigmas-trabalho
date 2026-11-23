@@ -107,48 +107,86 @@ cd backend && uv run pytest
 
 ### 5.1 Predicados principais
 
-<!--
-  Os predicados mais importantes, com o local no código. Use a notação
-  nome/aridade e indique entradas (+) e saídas (-), como na documentação
-  do SWI-Prolog.
--->
+Cada casa do tabuleiro é uma variável que vale 0 ou 1 (1 = rainha), e cada regra do jogo é uma restrição de soma do CLP(FD).
 
 | Predicado | Local | O que faz |
 |-----------|-------|-----------|
-| [`resolver(+Entrada, -Saida)`] | [`arquivo.pl:42`] | [...] |
-| [...] | [...] | [...] |
+| `board_constraints(+N, ?Queens)` | `rainhas.pl:58` | As regras das rainhas: soma 1 em cada linha e coluna, e nenhuma rainha encostada em outra |
+| `exactly_one(?Cells)` | `rainhas.pl:81` | A soma de uma linha ou coluna é 1 |
+| `no_touching(?Rows)` | `rainhas.pl:87` | Percorre as linhas de duas em duas, por recursão |
+| `squares(?Upper, ?Lower)` | `rainhas.pl:94` | Em todo quadrado 2×2 há no máximo 1 rainha; isso cobre todos os contatos, porque duas casas vizinhas sempre dividem algum 2×2 |
+| `clue_constraints(+Puzzle, ?Queens)` | `rainhas.pl:103` | Aplica as restrições de cada pista |
+| `clue_constraint(+Queens, +R-C-K)` | `rainhas.pl:114` | A casa da pista vale 0, e a soma das vizinhas é K |
+| `neighbors(+Grid, +R-C, -Vars)` | `rainhas.pl:126` | As até 8 casas vizinhas de uma posição |
+| `puzzle_constraints(+Puzzle, -Queens)` | `rainhas.pl:146` | Junta as regras das rainhas e as das pistas |
+| `solve(+Puzzle, -Solution)` | `rainhas.pl:159` | Resolve o puzzle |
+| `count_solutions(+Puzzle, +Limit, -Count)` | `rainhas.pl:168` | Conta as soluções até o limite; usado para garantir solução única |
+| `difficulty_size(?Difficulty, ?N)` | `rainhas.pl:195` | Fatos: o tamanho do tabuleiro por nível (6, 7 e 8) |
+| `generate(+Difficulty, -Puzzle)` | `rainhas.pl:200` | Gera um puzzle com solução única |
+| `random_solution(+N, -Solution)` | `rainhas.pl:212` | Sorteia uma posição válida das rainhas |
+| `random_labeling(+Vars)` | `rainhas.pl:220` | Como o `label/1`, mas tenta 0 e 1 em ordem aleatória |
+| `reveal_until_unique/5` | `rainhas.pl:241` | Revela pistas aleatórias até a solução ficar única |
+| `hide_redundant/3` | `rainhas.pl:251` | Esconde as pistas desnecessárias, deixando o puzzle enxuto |
+| `hint(+Puzzle, +Board, -Result)` | `rainhas.pl:286` | Dica: a posição da próxima rainha, `complete` ou `unsolvable` |
+| `keep_queen/2` | `rainhas.pl:304` | Fixa em 1 as rainhas que o jogador já colocou |
 
 ### 5.2 Conceitos do paradigma lógico utilizados
 
-<!--
-  Marque o que o projeto usa DE FATO e indique onde. Não é preciso usar
-  tudo; é preciso explicar bem o que foi usado.
--->
-
-- [ ] Fatos e regras como base de conhecimento: [onde]
-- [ ] Unificação e casamento de padrões: [onde]
-- [ ] Recursão (inclusive sobre listas): [onde]
-- [ ] Backtracking e múltiplas soluções: [onde]
-- [ ] `findall/3`, `bagof/3`, `setof/3` ou similares: [onde]
-- [ ] Corte (`!`) ou negação (`\+`), e por que foram necessários: [onde]
-- [ ] Programação por restrições (CLP(FD) ou outra): [onde]
-- [ ] Predicados de ordem superior (`maplist`, `foldl`, `include`...): [onde]
-- [ ] Outro: [...]
+- [x] Fatos e regras como base de conhecimento: os fatos `difficulty_size/2` (`rainhas.pl:195`) dão o tamanho do tabuleiro por nível, e `no_clue/1` (`rainhas.pl:49`) define o valor de "casa sem pista". As regras do jogo são predicados como `board_constraints/2` (`rainhas.pl:58`) e `clue_constraint/2` (`rainhas.pl:114`).
+- [x] Unificação e casamento de padrões: `squares/2` separa as duas primeiras casas de cada linha com `[A, B | As]` (`rainhas.pl:95`); `clue_constraint/2` desmonta a pista com `R-C-K` (`rainhas.pl:114`); `keep_queen/2` escolhe a cláusula pelo valor da casa, `1` ou `0` (`rainhas.pl:304`).
+- [x] Recursão (inclusive sobre listas): `no_touching/1` (`rainhas.pl:87`) e `squares/2` (`rainhas.pl:94`) percorrem as linhas; `random_labeling/1` (`rainhas.pl:220`), `reveal_until_unique/5` (`rainhas.pl:241`) e `hide_redundant/3` (`rainhas.pl:251`) percorrem listas, cada um com seu caso base.
+- [x] Backtracking e múltiplas soluções: `clue_at/4` (`rainhas.pl:108`) enumera as pistas por backtracking sobre `nth0/3`; `random_labeling/1` usa `member/2` como ponto de escolha (`rainhas.pl:225`); `count_solutions/3` (`rainhas.pl:168`) volta atrás para enumerar as soluções e contá-las.
+- [x] `findall/3`, `bagof/3`, `setof/3` ou similares: `findall/3` em `clue_constraints/2` (`rainhas.pl:104`), `neighbors/3` (`rainhas.pl:129`), `count_solutions/3` (`rainhas.pl:169`), `generate/2` (`rainhas.pl:205`) e `hint/3` (`rainhas.pl:291`). Como o `findall/3` copia as variáveis, o `neighbors/3` coleta só as posições e depois busca as variáveis com `maplist/3` (`rainhas.pl:136`).
+- [x] Corte (`!`) ou negação (`\+`), e por que foram necessários: o corte em `solve/2` (`rainhas.pl:163`) fica só com a primeira solução encontrada, sem procurar outras se o usuário pedir mais. Em `generate/2` (`rainhas.pl:209`) e `random_solution/2` (`rainhas.pl:216`), o corte impede que o backtracking gere outro puzzle depois do primeiro. Em `reveal_until_unique/5` (`rainhas.pl:243`), ele para de revelar pistas quando a solução fica única. Em `keep_queen/2` (`rainhas.pl:304`), evita deixar um ponto de escolha desnecessário. Não usamos negação (`\+`).
+- [x] Programação por restrições (CLP(FD) ou outra): `ins 0..1` declara cada casa como 0 ou 1 (`rainhas.pl:66`); `sum/3` exige soma 1 por linha e coluna (`rainhas.pl:82`) e soma K ao redor de cada pista (`rainhas.pl:118`); `#=<` limita cada quadrado 2×2 a uma rainha (`rainhas.pl:96`); `labeling/2` com a heurística `ff` encontra os valores em `solve/2` (`rainhas.pl:162`), `count_solutions/3` e `hint/3`.
+- [x] Predicados de ordem superior (`maplist`, `foldl`, `include`...): `maplist(exactly_one, Queens)` e `maplist(exactly_one, Columns)` em `board_constraints/2` (`rainhas.pl:69` e `73`); `maplist(clue_constraint(Queens), Clues)` com aplicação parcial (`rainhas.pl:105`); `maplist(maplist(keep_queen), Board, Solution)` em `hint/3` (`rainhas.pl:288`), um `maplist` dentro de outro, para percorrer a grade.
+- [x] Outro: `limit/2` em `count_solutions/3` (`rainhas.pl:170`) para de contar ao chegar no limite (para saber se a solução é única, basta ver se existem 2); e o se-então-senão (`->` / `;`) em `hint/3` (`rainhas.pl:286`) e `hide_redundant/3` (`rainhas.pl:255`).
 
 ### 5.3 Trecho em destaque
 
-<!--
-  Escolha o trecho de Prolog de que o grupo mais se orgulha (ou o mais
-  difícil). Cole o código e explique como ele funciona: o que é declarado,
-  como o Prolog chega à resposta, e por que essa solução é "lógica" e não
-  uma tradução de um algoritmo imperativo.
--->
+As regras das rainhas, em `board_constraints/2` e `squares/2` (`rainhas.pl:55` a `98`; alguns comentários foram encurtados aqui):
 
 ```prolog
-[trecho]
+board_constraints(N, Queens) :-
+    length(Queens, N),
+    maplist(same_length(Queens), Queens),
+    append(Queens, Cells),
+    Cells ins 0..1,
+
+    % Uma rainha por linha: a soma dos 0/1 da linha é 1.
+    maplist(exactly_one, Queens),
+
+    % Uma rainha por coluna: mesma restrição sobre a grade transposta.
+    transpose(Queens, Columns),
+    maplist(exactly_one, Columns),
+
+    % Nenhuma rainha encostada: em todo quadrado 2x2 há no máximo uma.
+    no_touching(Queens).
+
+exactly_one(Cells) :-
+    sum(Cells, #=, 1).
+
+no_touching([_]).
+no_touching([Upper, Lower | Rest]) :-
+    squares(Upper, Lower),
+    no_touching([Lower | Rest]).
+
+squares([_], [_]).
+squares([A, B | As], [C, D | Cs]) :-
+    A + B + C + D #=< 1,
+    squares([B | As], [D | Cs]).
 ```
 
-[Explicação.]
+**O que é declarado:**
+
+- O tabuleiro é uma lista de N linhas com N variáveis cada, e `Cells ins 0..1` diz que cada casa vale 0 (vazia) ou 1 (rainha).
+- "Uma rainha por linha" vira literalmente "a soma da linha é 1" (`exactly_one/1`). Para as colunas, usamos a mesma regra sobre a grade transposta (`transpose/2`), sem escrever código novo.
+- "Nenhuma rainha encostada" vira "todo quadrado 2×2 tem soma no máximo 1". O `no_touching/1` pega as linhas de duas em duas, e o `squares/2` desliza uma janela 2×2 por elas, casando o padrão `[A, B | As]` com `[C, D | Cs]`.
+- O truque do 2×2: duas casas vizinhas, inclusive na diagonal, sempre dividem algum quadrado 2×2. Por isso essa única restrição cobre todos os tipos de contato, sem precisar tratar diagonais separadamente.
+
+**Como o Prolog chega à resposta:** este predicado não procura nada; ele só monta as restrições. Ao receber cada restrição, o CLP(FD) já elimina valores impossíveis (por exemplo, quando uma casa da linha vira 1, as outras são forçadas a 0). Depois, o `labeling/2` em `solve/2` (`rainhas.pl:162`) tenta valores para as casas que sobraram e, se uma restrição falha, o backtracking do Prolog volta atrás e tenta outro valor.
+
+**Por que é lógico e não imperativo:** não há nenhum laço de busca, nenhum "coloque uma rainha, verifique, remova" escrito por nós. O código descreve *o que* é um tabuleiro válido, quase com as mesmas palavras das regras do jogo, e deixa *como* encontrá-lo para o resolvedor. As mesmas restrições servem para resolver (`solve/2`), contar soluções (`count_solutions/3`), sortear um tabuleiro (`random_solution/2`) e dar dicas (`hint/3`), mudando apenas o que é feito depois de declará-las.
 
 ## 6. Parte em Elm
 
@@ -270,13 +308,46 @@ Se o puzzle não tem solução, se há rainha errada ou se não resta dica a dar
 
 ## 8. Testes e validação
 
-<!--
-  Como o grupo sabe que o sistema funciona? Testes automatizados (plunit,
-  pytest, elm-test), roteiros de teste manual, casos de borda verificados.
--->
+Para rodar todos os testes automatizados: `make test`.
 
-- [O que foi testado e como.]
-- [Casos de borda considerados.]
+**Testes do Prolog (plunit):** 15 verificações em `backend/prolog/test_rainhas.pl`, em 3 grupos.
+
+- `solve` (`test_rainhas.pl:20`):
+  - `solve/2` encontra a solução esperada do puzzle de exemplo;
+  - o exemplo tem solução única (`count_solutions/3` devolve 1);
+  - nenhuma casa com pista recebe rainha;
+  - uma pista 4 num canto, que só tem 3 vizinhas, não tem solução;
+  - um tabuleiro 3×3 não tem solução, porque não cabem 3 rainhas sem encostar.
+- `generate` (`test_rainhas.pl:55`):
+  - nos 3 níveis, o puzzle gerado tem solução única (3 verificações);
+  - nos 3 níveis, o tabuleiro tem o tamanho certo, 6, 7 e 8 (3 verificações);
+  - um nível inválido gera um erro de tipo.
+- `hint` (`test_rainhas.pl:70`):
+  - num tabuleiro vazio, a dica aponta uma casa que tem rainha na solução;
+  - com a solução completa, a dica responde `complete`;
+  - com uma rainha no lugar errado, a dica responde `unsolvable`.
+
+**Testes da API (pytest):** 7 testes em `backend/tests/test_api.py`, usando o `TestClient` do FastAPI, sem subir servidor. Eles conferem só a integração (rotas, formato do JSON e códigos de status), porque as regras já são testadas em Prolog:
+
+- `/api/solve` devolve a solução certa; responde 422 para um puzzle sem solução e para um JSON malformado;
+- `/api/generate` devolve um tabuleiro 6×6 com pistas e casas vazias;
+- `/api/hint` devolve uma rainha da solução; responde 422 com a mensagem certa quando o tabuleiro já está completo e quando há uma rainha errada.
+
+**Testes manuais na interface:**
+
+- Duas rainhas encostadas ficam vermelhas.
+- Uma pista com mais rainhas ao redor do que o seu número fica vermelha.
+- Pedir uma dica com uma rainha errada mostra a mensagem de erro do backend.
+- O botão Resolver completa o tabuleiro, mantendo as rainhas certas do jogador.
+- O botão Limpar apaga tudo e mantém só as pistas.
+
+**Casos de borda considerados:**
+
+- Puzzle sem solução: o Prolog falha, e a API responde 422 com uma mensagem que o Elm mostra na tela.
+- Rainha errada na hora da dica: a dica responde `unsolvable`, e o jogador é avisado.
+- Tabuleiro já completo: a dica responde `complete`, em vez de inventar uma jogada.
+- JSON malformado (grade com menos de 4 ou mais de 8 linhas ou colunas, pista fora de -1 a 8, rainha diferente de 0 ou 1): o Pydantic recusa, com 422, antes de o Prolog ser chamado (`main.py:23` a `30`).
+- Nível de dificuldade inválido: `generate/2` lança um erro de tipo (`must_be/2`), em vez de falhar em silêncio.
 
 ## 9. Limitações e problemas conhecidos
 
