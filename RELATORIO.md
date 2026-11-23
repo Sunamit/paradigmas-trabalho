@@ -311,6 +311,7 @@ Se o puzzle não tem solução, se há rainha errada ou se não resta dica a dar
 
 Para rodar todos os testes automatizados: `make test`.
 
+
 **Testes do Prolog (plunit):** 15 verificações em `backend/prolog/test_rainhas.pl`, em 3 grupos.
 
 - `solve` (`test_rainhas.pl:20`):
@@ -341,6 +342,12 @@ Para rodar todos os testes automatizados: `make test`.
 - Pedir uma dica com uma rainha errada mostra a mensagem de erro do backend.
 - O botão Resolver completa o tabuleiro, mantendo as rainhas certas do jogador.
 - O botão Limpar apaga tudo e mantém só as pistas.
+
+**Testes do domínio Elm (`elm-test`):** testes unitários do domínio puro em `frontend/tests/RainhasTest.elm`, usando `frontend/src/Rainhas.elm` sem necessidade de navegador ou servidor:
+
+- Conversões e estado inicial (`fromPuzzle`, `toPuzzle`, `toQueens`, `queenCount`, `clear`): leitura do tamanho do tabuleiro, mapeamento de `-1` e pistas `0..8`, ida e volta do puzzle ignorando marcações/rainhas, grade binária de rainhas e limpeza mantendo pistas;
+- Interação e imutabilidade (`cycle`, `placeQueen`): alternância entre vazia, marcação `X`, rainha do jogador e vazia, bloqueio em pistas e fora do tabuleiro, e preservação do tabuleiro original;
+- Vizinhança, conflitos e conclusão (`queensAround`, `conflicts`, `isComplete`, `revealSolution`): contagem das 8 casas vizinhas sem contar a própria casa nem `X`, detecção de conflitos em linha/coluna/diagonal adjacente e excesso em pistas, validação de tabuleiro completo e revelação da solução mantendo rainhas corretas do jogador e marcando as restantes como `Prolog`.
 
 **Casos de borda considerados:**
 
