@@ -239,13 +239,46 @@ squares([A, B | As], [C, D | Cs]) :-
 
 ## 8. Testes e validação
 
-<!--
-  Como o grupo sabe que o sistema funciona? Testes automatizados (plunit,
-  pytest, elm-test), roteiros de teste manual, casos de borda verificados.
--->
+Para rodar todos os testes automatizados: `make test`.
 
-- [O que foi testado e como.]
-- [Casos de borda considerados.]
+**Testes do Prolog (plunit):** 15 verificações em `backend/prolog/test_rainhas.pl`, em 3 grupos.
+
+- `solve` (`test_rainhas.pl:20`):
+  - `solve/2` encontra a solução esperada do puzzle de exemplo;
+  - o exemplo tem solução única (`count_solutions/3` devolve 1);
+  - nenhuma casa com pista recebe rainha;
+  - uma pista 4 num canto, que só tem 3 vizinhas, não tem solução;
+  - um tabuleiro 3×3 não tem solução, porque não cabem 3 rainhas sem encostar.
+- `generate` (`test_rainhas.pl:55`):
+  - nos 3 níveis, o puzzle gerado tem solução única (3 verificações);
+  - nos 3 níveis, o tabuleiro tem o tamanho certo, 6, 7 e 8 (3 verificações);
+  - um nível inválido gera um erro de tipo.
+- `hint` (`test_rainhas.pl:70`):
+  - num tabuleiro vazio, a dica aponta uma casa que tem rainha na solução;
+  - com a solução completa, a dica responde `complete`;
+  - com uma rainha no lugar errado, a dica responde `unsolvable`.
+
+**Testes da API (pytest):** 7 testes em `backend/tests/test_api.py`, usando o `TestClient` do FastAPI, sem subir servidor. Eles conferem só a integração (rotas, formato do JSON e códigos de status), porque as regras já são testadas em Prolog:
+
+- `/api/solve` devolve a solução certa; responde 422 para um puzzle sem solução e para um JSON malformado;
+- `/api/generate` devolve um tabuleiro 6×6 com pistas e casas vazias;
+- `/api/hint` devolve uma rainha da solução; responde 422 com a mensagem certa quando o tabuleiro já está completo e quando há uma rainha errada.
+
+**Testes manuais na interface:**
+
+- Duas rainhas encostadas ficam vermelhas.
+- Uma pista com mais rainhas ao redor do que o seu número fica vermelha.
+- Pedir uma dica com uma rainha errada mostra a mensagem de erro do backend.
+- O botão Resolver completa o tabuleiro, mantendo as rainhas certas do jogador.
+- O botão Limpar apaga tudo e mantém só as pistas.
+
+**Casos de borda considerados:**
+
+- Puzzle sem solução: o Prolog falha, e a API responde 422 com uma mensagem que o Elm mostra na tela.
+- Rainha errada na hora da dica: a dica responde `unsolvable`, e o jogador é avisado.
+- Tabuleiro já completo: a dica responde `complete`, em vez de inventar uma jogada.
+- JSON malformado (grade com menos de 4 ou mais de 8 linhas ou colunas, pista fora de -1 a 8, rainha diferente de 0 ou 1): o Pydantic recusa, com 422, antes de o Prolog ser chamado (`main.py:23` a `30`).
+- Nível de dificuldade inválido: `generate/2` lança um erro de tipo (`must_be/2`), em vez de falhar em silêncio.
 
 ## 9. Limitações e problemas conhecidos
 
