@@ -14,18 +14,9 @@
 - **Nome do projeto:** Rainhas Minadas
 - **Nome do grupo:** Rainhas Minadas
 - **Repositório:** https://github.com/Sunamit/paradigmas-trabalho
-- **Commit ou tag entregue:** [`a1b2c3d` ou `v1.0`]
-  <!--
-    O avaliador vai olhar exatamente esta versão. Para criar uma tag:
-      git tag v1.0 && git push origin v1.0
-  -->
+- **Commit ou tag entregue:** `v1.0`
 - **Ponto de partida:** Remix original
-- **Slides da apresentação oral:** [`docs/apresentacao.pdf` | link externo | não há]
-  <!--
-    No final do semestre, cada grupo faz uma apresentação oral de 15
-    minutos. Slides são opcionais; se o grupo usar, coloque o arquivo no
-    repositório (de preferência em PDF) e indique o caminho aqui.
-  -->
+- **Slides da apresentação oral:** não há
 
 ## 2. Resumo
 
@@ -33,7 +24,7 @@ Rainhas Minadas é um jogo de raciocínio que mistura N-rainhas com Campo Minado
 
 O Prolog é o cérebro do sistema: cada regra do jogo vira uma restrição CLP(FD), e o mesmo código resolve o puzzle, gera puzzles com solução única e calcula dicas. O Elm cuida da interface e da verificação instantânea de conflitos.
 
-![Captura de tela do sistema](docs\Screenshot_934.png)
+![Captura de tela do sistema](docs/captura.png)
 
 ## 3. Como executar
 
@@ -212,7 +203,7 @@ type alias Board =
     }
 ```
 
-Estado e eventos (`frontend/src/Main.elm:47` e `:76`):
+Estado e eventos (`frontend/src/Main.elm:57` e `:88`):
 
 ```elm
 type alias Model =
@@ -221,6 +212,7 @@ type alias Model =
     , darkTheme : Bool
     , loading : Bool
     , error : Maybe String
+    , seconds : Int
     }
 
 type Msg
@@ -234,26 +226,28 @@ type Msg
     | GotSolution (Result String (Set Position))
     | ResetRequested
     | ErrorDismissed
+    | Tick Time.Posix
 ```
 
 - **`Cell` é um custom type, e não dois `Bool`.** Com `temPista` e `temRainha`, uma casa poderia ser pista e rainha ao mesmo tempo, o que as regras proíbem. Com `Cell`, esse estado não pode ser escrito. `setCell` (`frontend/src/Rainhas.elm:302`) completa a garantia: nunca troca uma pista.
-- **`Origin` fica dentro de `Queen`.** Só rainha tem origem, então uma casa vazia "colocada pelo Prolog" também não existe. A origem define a classe CSS (`frontend/src/Main.elm:313`) e a mensagem de fim de jogo (`frontend/src/Main.elm:245`).
+- **`Origin` fica dentro de `Queen`.** Só rainha tem origem, então uma casa vazia "colocada pelo Prolog" também não existe. A origem define a classe CSS (`frontend/src/Main.elm:352`) e a mensagem de fim de jogo (`frontend/src/Main.elm:263`).
 - **`Difficulty` é um custom type, e não `String`** (`frontend/src/Api.elm:24`). Um nível com erro de digitação não compila; a conversão para texto fica só em `difficultyToString` (`frontend/src/Api.elm:45`).
-- **`error : Maybe String`** representa a ausência de erro sem null nem texto vazio. Para mostrar a mensagem, `viewMessages` (`frontend/src/Main.elm:221`) precisa tratar também o caso `Nothing`.
+- **`error : Maybe String`** representa a ausência de erro sem null nem texto vazio. Para mostrar a mensagem, `viewMessages` (`frontend/src/Main.elm:239`) precisa tratar também o caso `Nothing`.
 - **As mensagens `Got...` carregam um `Result`** com o tipo exato de cada resposta: um tabuleiro, uma posição ou um conjunto de posições. O `update` é obrigado a tratar `Ok` e `Err`.
+- **`seconds : Int`** guarda o tempo de jogo do cronômetro. Ele só muda pela mensagem `Tick`, e volta a 0 em `NewGame` e `ResetRequested`.
 - **O que não está no `Model`:** conflitos, contagem de rainhas e vitória são calculados a partir do tabuleiro (`conflicts`, `queenCount`, `isComplete`). Assim não podem ficar desatualizados.
 
 `loading` e `error` ainda são campos independentes, então o tipo permite os dois ativos ao mesmo tempo. O `update` evita isso na prática; um custom type para o estado da requisição impediria no próprio tipo.
 
 ### 6.2 Conceitos do paradigma funcional utilizados
 
-- [x] Arquitetura Elm (Model, update, view): `Model` (`frontend/src/Main.elm:47`), `update` (`frontend/src/Main.elm:89`) e `view` (`frontend/src/Main.elm:156`).
-- [x] Custom types e `case` exaustivo: `Cell` (`frontend/src/Rainhas.elm:48`), `cycle` (`frontend/src/Rainhas.elm:318`), o `case` sobre tupla de `revealSolution` (`frontend/src/Rainhas.elm:342`) e `cellClass` (`frontend/src/Main.elm:313`), que não tem `_`: um construtor novo em `Cell` faz o compilador apontar a função.
-- [x] `Maybe` e `Result` no lugar de null e exceções: `error` no `Model` (`frontend/src/Main.elm:52`), `queensOf` com `List.filterMap` (`frontend/src/Api.elm:133`) e `expectJson`, que transforma todas as falhas HTTP em `Err` (`frontend/src/Api.elm:171`).
-- [x] Funções de ordem superior e aplicação parcial: `toRows` recebe a função que converte cada casa (`frontend/src/Rainhas.elm:142`); `attack queen` e `clueExceeded board` são aplicações parciais (`frontend/src/Rainhas.elm:255` e `:258`), assim como `viewCell board conflicts` (`frontend/src/Main.elm:279`).
+- [x] Arquitetura Elm (Model, update, view): `Model` (`frontend/src/Main.elm:57`), `update` (`frontend/src/Main.elm:102`) e `view` (`frontend/src/Main.elm:172`).
+- [x] Custom types e `case` exaustivo: `Cell` (`frontend/src/Rainhas.elm:48`), `cycle` (`frontend/src/Rainhas.elm:318`), o `case` sobre tupla de `revealSolution` (`frontend/src/Rainhas.elm:342`) e `cellClass` (`frontend/src/Main.elm:352`), que não tem `_`: um construtor novo em `Cell` faz o compilador apontar a função.
+- [x] `Maybe` e `Result` no lugar de null e exceções: `error` no `Model` (`frontend/src/Main.elm:62`), `queensOf` com `List.filterMap` (`frontend/src/Api.elm:133`) e `expectJson`, que transforma todas as falhas HTTP em `Err` (`frontend/src/Api.elm:171`).
+- [x] Funções de ordem superior e aplicação parcial: `toRows` recebe a função que converte cada casa (`frontend/src/Rainhas.elm:142`); `attack queen` e `clueExceeded board` são aplicações parciais (`frontend/src/Rainhas.elm:255` e `:258`), assim como `viewCell board conflicts` (`frontend/src/Main.elm:318`).
 - [x] Composição (`|>`, `>>`): pipelines com `|>` em `fromPuzzle` (`frontend/src/Rainhas.elm:89`), `queensAround` (`frontend/src/Rainhas.elm:227`) e `queensOf` (`frontend/src/Api.elm:133`). Não usamos `>>`.
 - [x] Decoders e encoders JSON: `encodeGrid` (`frontend/src/Api.elm:107`), `puzzleDecoder` (`frontend/src/Api.elm:119`), `solutionDecoder` (`frontend/src/Api.elm:127`) e `hintDecoder` com `Decode.map2` (`frontend/src/Api.elm:156`).
-- [x] Comandos e subscriptions (efeitos controlados): só comandos. `generate`, `solve` e `hint` devolvem um `Cmd msg` (`frontend/src/Api.elm:62`, `:76` e `:88`). Não há subscriptions: usamos `Sub.none` (`frontend/src/Main.elm:32`).
+- [x] Comandos e subscriptions (efeitos controlados): `generate`, `solve` e `hint` devolvem um `Cmd msg` (`frontend/src/Api.elm:62`, `:76` e `:88`). O cronômetro é uma subscription: `subscriptions` (`frontend/src/Main.elm:37`) assina `Time.every 1000 Tick` só enquanto o jogo está em andamento, e devolve `Sub.none` quando o puzzle está carregando ou resolvido.
 - [x] Imutabilidade e atualização de records: `setCell` (`frontend/src/Rainhas.elm:302`) e `clear` (`frontend/src/Rainhas.elm:371`) devolvem um tabuleiro novo; todo o `update` cria um `Model` novo com a sintaxe `{ model | ... }`.
 - [x] Outro: domínio puro isolado em módulo. `Rainhas.elm` não importa HTTP nem HTML, só `Array` e `Set` (`frontend/src/Rainhas.elm:33`), e não exporta auxiliares como `setCell` e `attack`.
 
@@ -291,7 +285,7 @@ clueExceeded board position =
 - **Aplicação parcial.** `attack` recebe duas posições; `attack queen` já é uma função que espera a segunda, e é ela que `List.any` usa. `clueExceeded board` segue a mesma ideia.
 - **A rainha não ataca a si mesma**, embora seja comparada com a lista inteira: `attack` exige `p1 /= p2` (`frontend/src/Rainhas.elm:239`).
 - **Pista com rainhas de menos não é conflito**, porque o jogador pode não ter terminado. Por isso a comparação é `>`; a igualdade só é exigida na vitória, por `clueSatisfied` (`frontend/src/Rainhas.elm:273`).
-- **`Set`** elimina repetições e combina com a única pergunta que a view faz: "esta casa está em conflito?" (`frontend/src/Main.elm:300`).
+- **`Set`** elimina repetições e combina com a única pergunta que a view faz: "esta casa está em conflito?" (`frontend/src/Main.elm:339`).
 
 Essa verificação repete parte das regras do Prolog de propósito: assim a resposta ao clique não depende da rede. Resolver, gerar e dar dicas continuam só no Prolog.
 
@@ -309,8 +303,7 @@ Se o puzzle não tem solução, se há rainha errada ou se não resta dica a dar
 
 ## 8. Testes e validação
 
-Para rodar todos os testes automatizados: `make test`.
-
+Para rodar os testes do Prolog e da API: `make test`. Para os testes do Elm: `cd frontend && npx elm-test`.
 
 **Testes do Prolog (plunit):** 15 verificações em `backend/prolog/test_rainhas.pl`, em 3 grupos.
 
@@ -359,112 +352,58 @@ Para rodar todos os testes automatizados: `make test`.
 
 ## 9. Limitações e problemas conhecidos
 
-<!--
-  Seja honesto. Um problema conhecido e bem descrito vale mais que um
-  problema escondido que o avaliador descobre sozinho.
--->
-
-- [Limitação ou bug conhecido, e em que situação acontece.]
-- [O que o grupo faria com mais tempo.]
+- **`make dev` nem sempre sobe o backend no macOS.** Em alguns testes, só o Vite iniciou e o jogo mostrou "Erro no servidor (código 502)". Rodar backend e frontend em dois terminais, como na seção 3, resolve.
+- **A dificuldade muda só o tamanho do tabuleiro** (6, 7 ou 8), e não as técnicas de dedução necessárias. Um 8×8 pode sair mais fácil que um 7×7.
+- **O gerador tira pistas de forma gulosa** (`hide_redundant/3`): o puzzle final não tem pistas sobrando, mas não necessariamente tem o menor número possível de pistas.
+- **A dica diz onde vai uma rainha, mas não explica por quê.**
+- **A verificação instantânea do Elm é parcial:** ela aponta rainhas que se atacam e pistas com rainhas demais, mas não percebe uma rainha que não ataca ninguém e ainda assim está fora da solução. Isso só aparece ao pedir uma dica.
+- **O cronômetro conta ticks de 1 segundo.** Com a aba em segundo plano, o navegador pode atrasar os ticks, e o tempo mostrado fica menor que o real.
+- **Não há controle por teclado** nem pausa do cronômetro.
+- **Com mais tempo:** dicas explicadas pelo Prolog (qual regra força a rainha), níveis medidos pelas técnicas de dedução, pausa do cronômetro e controle por teclado.
 
 ## 10. Contribuição de cada integrante
 
-<!--
-  O que cada pessoa fez. Deve ser coerente com o histórico de commits do
-  repositório. Todos os integrantes precisam concordar com esta tabela.
--->
-
 | Integrante | Principais contribuições |
 |------------|--------------------------|
-| [Nome]     | [...] |
-| [Nome]     | [...] |
-| [Nome]     | [...] |
-| [Nome]     | [...] |
-| [Nome]     | [...] |
-
-<!--
-  Além desta tabela, que é do grupo, cada integrante entrega uma avaliação
-  360 graus individual no SEU repositório do GitHub Classroom, em
-  avaliacao-360/<matricula>.md. Veja o modelo em avaliacao-360/TEMPLATE.md.
--->
+| Sunamita Vitória Rodrigues dos Santos | Coordenação do grupo; implementação do Prolog (`rainhas.pl`, `test_rainhas.pl`), da ponte Python (`prolog.py`, `main.py`, `test_api.py`) e do Elm (`Rainhas.elm`, `Api.elm`, `Main.elm`), com uso intensivo de IA (seção 11); correção da dependência `elm/time`, revisão final e seções 9 a 13 do relatório |
+| Arthur Fonseca Vale | Seções 1 (Identificação), 2 (Resumo), 3 (Como executar) e 4 (Arquitetura) do relatório |
+| Ana Carolina Madeira Fialho | Seções 6 (Elm) e 7 (Integração) do relatório; aplicação do `elm-format` nos módulos Elm |
+| Isabelle da Costa Figueiredo | Seções 5 (Prolog: predicados, conceitos e trecho em destaque) e 8 (Testes e validação) do relatório |
+| Pedro Paulo Santos Almeida | Limpeza do template do Sudoku, reescrita do README e integração dos pull requests das seções 5 a 8 |
+| João Paulo Barros de Cristo | Cronômetro (subscription com `Time.every`) e testes do domínio Elm com elm-test (`frontend/tests/RainhasTest.elm`) |
 
 ## 11. Fontes, código de terceiros e uso de IA
 
-<!--
-  Declare tudo o que não foi escrito pelo grupo. Declarar não tira pontos;
-  deixar de declarar pode anular o trabalho.
--->
+**Código reaproveitado.** Partimos do template do Sudoku do professor (`fabiommendes/paradigmas-trabalho-final`). Mantivemos a estrutura do servidor FastAPI e da ponte com o janus, a configuração do Vite, o `main.js`, o tratamento de erros HTTP do `Api.elm` (`expectJson` e `errorDetail`) e o `style.css`, ao qual acrescentamos o bloco do tabuleiro N×N. Foram escritos para este jogo: `rainhas.pl`, `test_rainhas.pl`, `Rainhas.elm`, `RainhasTest.elm` e as novas versões de `Api.elm`, `Main.elm`, `prolog.py`, `main.py` e `test_api.py`.
 
-**Código reaproveitado.** [Ex.: "Partimos do template do Sudoku. Mantivemos
-a integração Python e a estrutura do frontend; o arquivo `x.pl` e os
-módulos `Y.elm` e `Z.elm` foram escritos pelo grupo."]
-
-**Referências.** [Livros, documentação, tutoriais, repositórios consultados.]
+**Referências.** Manual do SWI-Prolog (bibliotecas `clpfd`, `plunit` e `janus`); guia oficial do Elm (guide.elm-lang.org) e documentação dos pacotes `elm/json`, `elm/http` e `elm/time`; README e código do template do professor.
 
 **Uso de ferramentas de IA.**
 
-- **Faixa de uso no código:** [nenhum | pontual | auxiliar | intensivo]
-  <!--
-    nenhum: não usou. pontual: autocompletar, dúvidas, explicar erros.
-    auxiliar: trechos gerados pela IA e revisados pelo grupo. intensivo: a
-    IA escreveu a maior parte do código. Veja o efeito em AVALIACAO.md,
-    seção 1.5. Não declarar anula o trabalho; declarar não tira pontos.
-  -->
+- **Faixa de uso no código:** intensivo
 
 | Ferramenta | Para que foi usada | Como o grupo verificou o resultado |
 |------------|--------------------|------------------------------------|
-| [Nome ou "nenhuma"] | [...] | [...] |
+| Claude (Anthropic) | Escreveu a maior parte do código: as regras, o resolvedor, o gerador e a dica em Prolog, a ponte Python, os módulos Elm e os testes plunit e pytest. Também orientou a divisão de tarefas e revisou o relatório | Rodamos os testes plunit, pytest e elm-test, testamos a interface manualmente (seção 8) e cada integrante estudou o código da parte que descreveu no relatório |
 
 ## 12. Apresentação oral
 
-<!--
-  A apresentação tem 15 minutos e acontece no final do semestre. Uma
-  divisão que costuma funcionar: 2 min de contexto, 5 min de demonstração
-  do sistema funcionando, 6 min mostrando o código Prolog e Elm mais
-  interessante, 2 min de limitações e aprendizados. Todos os integrantes
-  devem falar.
-
-  Preencha esta seção antes da apresentação.
--->
-
-- **Slides:** [mesmo caminho indicado na seção 1, ou "não há"]
+- **Slides:** não há
 - **Roteiro:**
 
 | Parte | Duração | Quem apresenta |
 |-------|:-------:|----------------|
-| [Contexto e objetivo] | [2 min] | [Nome] |
-| [Demonstração] | [5 min] | [Nome] |
-| [Código Prolog] | [3 min] | [Nome] |
-| [Código Elm] | [3 min] | [Nome] |
-| [Limitações e aprendizados] | [2 min] | [Nome] |
+| Contexto e regras do jogo | 2 min | Arthur Fonseca Vale |
+| Demonstração do jogo | 3 min | Pedro Paulo Santos Almeida |
+| Prolog: as regras como restrições CLP(FD) | 3 min | Isabelle da Costa Figueiredo |
+| Prolog: gerador com solução única e dica | 2 min | Sunamita Vitória Rodrigues dos Santos |
+| Elm: tipos, arquitetura e cronômetro | 3 min | Ana Carolina Madeira Fialho e João Paulo Barros de Cristo |
+| Limitações e aprendizados | 2 min | João Paulo Barros de Cristo |
 
 ## 13. Reflexão sobre os paradigmas
 
-<!--
-  De 1 a 3 parágrafos. Perguntas que podem ajudar:
-  - O que ficou mais simples em Prolog do que seria numa linguagem
-    imperativa? E o que ficou mais difícil?
-  - O que o compilador do Elm impediu que desse errado?
-  - Como a forma de pensar mudou entre as duas linguagens?
--->
+Em Prolog, o mais simples foi escrever as regras: "uma rainha por linha" virou literalmente "a soma da linha é 1", e "nenhuma rainha encostada" virou "todo quadrado 2×2 soma no máximo 1". As mesmas restrições serviram para resolver, contar soluções, sortear tabuleiros e dar dicas, e o gerador de puzzles com solução única saiu quase de graça com `count_solutions/3`. Numa linguagem imperativa teríamos escrito a busca com backtracking à mão. O mais difícil foi entender o que acontece por baixo: um lambda `[Row] >> length(Row, N)` travou o programa, porque o `yall` tratou `N` como variável livre e o `length/2` passou a gerar listas de todos os tamanhos (comentário em `rainhas.pl:61`); e o `findall/3` copia as variáveis, o que obrigou o `neighbors/3` a coletar posições e só depois buscar as variáveis da grade.
 
-[Reflexão.]
+No Elm, o compilador impediu vários erros antes de o jogo rodar. O custom type `Cell` torna impossível uma casa ser pista e rainha ao mesmo tempo, e o `case` exaustivo de `cellClass` obriga a tratar cada tipo de casa. Quando o cronômetro foi adicionado, o compilador recusou o `import Time` até o pacote `elm/time` ser declarado como dependência direta: o erro apareceu na compilação, e não no meio de uma partida.
 
----
-
-<!--
-  CHECKLIST ANTES DE ENTREGAR (apague esta seção depois de conferir)
-
-  - [ ] `uv run scripts/validar_entrega.py` termina sem erros.
-  - [ ] Todos os integrantes, com matrícula e turma, estão na seção 1.
-  - [ ] O commit ou tag da seção 1 existe no repositório e é a versão final.
-  - [ ] As instruções da seção 3 funcionam numa máquina sem nada instalado
-        além dos requisitos listados.
-  - [ ] Os locais indicados (arquivo:linha) conferem com o commit entregue.
-  - [ ] As seções 10 e 11 foram revisadas por todo o grupo.
-  - [ ] Se há slides, o arquivo está no repositório e o caminho da seção 1
-        está certo.
-  - [ ] Cada integrante entregou a própria avaliação 360 graus no seu
-        repositório individual, em avaliacao-360/<matricula>.md.
-  - [ ] Nenhum texto entre [colchetes] ou comentário de instrução sobrou.
--->
+A forma de pensar mudou entre as duas linguagens. Em Prolog descrevemos o que é uma solução e deixamos o resolvedor procurar; em Elm descrevemos quais estados existem e como cada evento leva de um estado a outro, sem nenhuma variável alterada no lugar. Nas duas, o trabalho principal foi escolher a representação certa: grades de 0 e 1 no Prolog, custom types no Elm.
