@@ -14,7 +14,7 @@
 - **Nome do projeto:** Rainhas Minadas
 - **Nome do grupo:** Rainhas Minadas
 - **Repositório:** https://github.com/Sunamit/paradigmas-trabalho
-- **Commit ou tag entregue:** `v1.0`
+- **Commit ou tag entregue:** `main`
 - **Ponto de partida:** Remix original
 - **Slides da apresentação oral:** não há
 
