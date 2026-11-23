@@ -154,50 +154,119 @@ cd backend && uv run pytest
 
 ### 6.1 Modelo e mensagens
 
-<!--
-  Os tipos centrais do programa: o Model, o tipo Msg e os custom types do
-  domínio. Explique as escolhas: por que um custom type e não um Bool, por
-  que Maybe ou Result, etc.
--->
+Domínio (`frontend/src/Rainhas.elm:48`, `:58` e `:72`):
 
 ```elm
-[type alias Model = ...]
-[type Msg = ...]
+type Cell
+    = Clue Int -- pista do puzzle: quantas rainhas há ao redor (não muda)
+    | Queen Origin -- rainha
+    | Cross -- o jogador marcou que ali NÃO vai rainha
+    | Empty
+
+type Origin
+    = Player
+    | Prolog
+
+type alias Board =
+    { size : Int
+    , cells : Array Cell
+    }
 ```
 
-[Explicação das escolhas.]
+Estado e eventos (`frontend/src/Main.elm:47` e `:76`):
+
+```elm
+type alias Model =
+    { board : Board
+    , difficulty : Difficulty
+    , darkTheme : Bool
+    , loading : Bool
+    , error : Maybe String
+    }
+
+type Msg
+    = NewGame Difficulty
+    | GotPuzzle (Result String Board)
+    | CellClicked Position
+    | ThemeToggled Bool
+    | HintRequested
+    | GotHint (Result String Position)
+    | SolveRequested
+    | GotSolution (Result String (Set Position))
+    | ResetRequested
+    | ErrorDismissed
+```
+
+- **`Cell` é um custom type, e não dois `Bool`.** Com `temPista` e `temRainha`, uma casa poderia ser pista e rainha ao mesmo tempo, o que as regras proíbem. Com `Cell`, esse estado não pode ser escrito. `setCell` (`frontend/src/Rainhas.elm:302`) completa a garantia: nunca troca uma pista.
+- **`Origin` fica dentro de `Queen`.** Só rainha tem origem, então uma casa vazia "colocada pelo Prolog" também não existe. A origem define a classe CSS (`frontend/src/Main.elm:313`) e a mensagem de fim de jogo (`frontend/src/Main.elm:245`).
+- **`Difficulty` é um custom type, e não `String`** (`frontend/src/Api.elm:24`). Um nível com erro de digitação não compila; a conversão para texto fica só em `difficultyToString` (`frontend/src/Api.elm:45`).
+- **`error : Maybe String`** representa a ausência de erro sem null nem texto vazio. Para mostrar a mensagem, `viewMessages` (`frontend/src/Main.elm:221`) precisa tratar também o caso `Nothing`.
+- **As mensagens `Got...` carregam um `Result`** com o tipo exato de cada resposta: um tabuleiro, uma posição ou um conjunto de posições. O `update` é obrigado a tratar `Ok` e `Err`.
+- **O que não está no `Model`:** conflitos, contagem de rainhas e vitória são calculados a partir do tabuleiro (`conflicts`, `queenCount`, `isComplete`). Assim não podem ficar desatualizados.
+
+`loading` e `error` ainda são campos independentes, então o tipo permite os dois ativos ao mesmo tempo. O `update` evita isso na prática; um custom type para o estado da requisição impediria no próprio tipo.
 
 ### 6.2 Conceitos do paradigma funcional utilizados
 
-- [ ] Arquitetura Elm (Model, update, view): [onde]
-- [ ] Custom types e `case` exaustivo: [onde]
-- [ ] `Maybe` e `Result` no lugar de null e exceções: [onde]
-- [ ] Funções de ordem superior e aplicação parcial: [onde]
-- [ ] Composição (`|>`, `>>`): [onde]
-- [ ] Decoders e encoders JSON: [onde]
-- [ ] Comandos e subscriptions (efeitos controlados): [onde]
-- [ ] Imutabilidade e atualização de records: [onde]
-- [ ] Outro: [...]
+- [x] Arquitetura Elm (Model, update, view): `Model` (`frontend/src/Main.elm:47`), `update` (`frontend/src/Main.elm:89`) e `view` (`frontend/src/Main.elm:156`).
+- [x] Custom types e `case` exaustivo: `Cell` (`frontend/src/Rainhas.elm:48`), `cycle` (`frontend/src/Rainhas.elm:318`), o `case` sobre tupla de `revealSolution` (`frontend/src/Rainhas.elm:342`) e `cellClass` (`frontend/src/Main.elm:313`), que não tem `_`: um construtor novo em `Cell` faz o compilador apontar a função.
+- [x] `Maybe` e `Result` no lugar de null e exceções: `error` no `Model` (`frontend/src/Main.elm:52`), `queensOf` com `List.filterMap` (`frontend/src/Api.elm:133`) e `expectJson`, que transforma todas as falhas HTTP em `Err` (`frontend/src/Api.elm:171`).
+- [x] Funções de ordem superior e aplicação parcial: `toRows` recebe a função que converte cada casa (`frontend/src/Rainhas.elm:142`); `attack queen` e `clueExceeded board` são aplicações parciais (`frontend/src/Rainhas.elm:255` e `:258`), assim como `viewCell board conflicts` (`frontend/src/Main.elm:279`).
+- [x] Composição (`|>`, `>>`): pipelines com `|>` em `fromPuzzle` (`frontend/src/Rainhas.elm:89`), `queensAround` (`frontend/src/Rainhas.elm:227`) e `queensOf` (`frontend/src/Api.elm:133`). Não usamos `>>`.
+- [x] Decoders e encoders JSON: `encodeGrid` (`frontend/src/Api.elm:107`), `puzzleDecoder` (`frontend/src/Api.elm:119`), `solutionDecoder` (`frontend/src/Api.elm:127`) e `hintDecoder` com `Decode.map2` (`frontend/src/Api.elm:156`).
+- [x] Comandos e subscriptions (efeitos controlados): só comandos. `generate`, `solve` e `hint` devolvem um `Cmd msg` (`frontend/src/Api.elm:62`, `:76` e `:88`). Não há subscriptions: usamos `Sub.none` (`frontend/src/Main.elm:32`).
+- [x] Imutabilidade e atualização de records: `setCell` (`frontend/src/Rainhas.elm:302`) e `clear` (`frontend/src/Rainhas.elm:371`) devolvem um tabuleiro novo; todo o `update` cria um `Model` novo com a sintaxe `{ model | ... }`.
+- [x] Outro: domínio puro isolado em módulo. `Rainhas.elm` não importa HTTP nem HTML, só `Array` e `Set` (`frontend/src/Rainhas.elm:33`), e não exporta auxiliares como `setCell` e `attack`.
 
 ### 6.3 Trecho em destaque
 
+`conflicts` e `clueExceeded` (`frontend/src/Rainhas.elm:248` e `:263`) decidem quais casas ficam vermelhas a cada clique:
+
 ```elm
-[trecho]
+conflicts : Board -> Set Position
+conflicts board =
+    let
+        queens =
+            queenPositions board
+
+        badQueens =
+            List.filter (\queen -> List.any (attack queen) queens) queens
+
+        badClues =
+            List.filter (clueExceeded board) (positions board)
+    in
+    Set.fromList (badQueens ++ badClues)
+
+
+clueExceeded : Board -> Position -> Bool
+clueExceeded board position =
+    case cellAt position board of
+        Clue k ->
+            queensAround position board > k
+
+        _ ->
+            False
 ```
 
-[Explicação.]
+- **Descreve o resultado, sem laço nem variável alterada.** As rainhas em conflito são "as rainhas que atacam alguma rainha", e o código diz isso com `List.filter` e `List.any`.
+- **Aplicação parcial.** `attack` recebe duas posições; `attack queen` já é uma função que espera a segunda, e é ela que `List.any` usa. `clueExceeded board` segue a mesma ideia.
+- **A rainha não ataca a si mesma**, embora seja comparada com a lista inteira: `attack` exige `p1 /= p2` (`frontend/src/Rainhas.elm:239`).
+- **Pista com rainhas de menos não é conflito**, porque o jogador pode não ter terminado. Por isso a comparação é `>`; a igualdade só é exigida na vitória, por `clueSatisfied` (`frontend/src/Rainhas.elm:273`).
+- **`Set`** elimina repetições e combina com a única pergunta que a view faz: "esta casa está em conflito?" (`frontend/src/Main.elm:300`).
+
+Essa verificação repete parte das regras do Prolog de propósito: assim a resposta ao clique não depende da rede. Resolver, gerar e dar dicas continuam só no Prolog.
 
 ## 7. Integração
 
-<!--
-  Curto: a parte Python não é avaliada. Liste as rotas ou a forma de
-  comunicação e o formato dos dados trocados. Se o grupo não usou Python,
-  explique como Elm e Prolog se comunicam.
--->
+O Elm envia JSON para `/api`, o Vite repassa ao FastAPI (`frontend/vite.config.js:13`) e o Python chama o Prolog pela biblioteca janus (`backend/app/prolog.py`). No puzzle, `-1` é casa sem pista e `0` a `8` é pista; nas rainhas, `1` é rainha e `0` é casa sem rainha.
 
 | Rota / chamada | Entrada | Saída | Predicado Prolog |
 |----------------|---------|-------|------------------|
-| [`POST /api/...`] | [...] | [...] | [`...`] |
+| `POST /api/generate` (`backend/app/main.py:66`) | `{"difficulty": "easy"}` (ou `"medium"`, `"hard"`) | `{"puzzle": [[...], ...]}` | `generate/2` (`backend/prolog/rainhas.pl:200`) |
+| `POST /api/solve` (`backend/app/main.py:71`) | `{"puzzle": [[...], ...]}` | `{"queens": [[...], ...]}` | `solve/2` (`backend/prolog/rainhas.pl:159`) |
+| `POST /api/hint` (`backend/app/main.py:79`) | `{"puzzle": [[...], ...], "queens": [[...], ...]}` | `{"row": 2, "col": 4}` | `hint/3` (`backend/prolog/rainhas.pl:286`) |
+
+Se o puzzle não tem solução, se há rainha errada ou se não resta dica a dar, a resposta é 422 com `{"detail": "mensagem"}`, e o Elm mostra essa mensagem (`errorDetail`, `frontend/src/Api.elm:193`). JSON fora do formato também recebe 422, mas do Pydantic, antes de chegar ao Prolog.
 
 ## 8. Testes e validação
 
