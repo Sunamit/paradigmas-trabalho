@@ -2,11 +2,11 @@ module Main exposing (main)
 
 {-| Interface do Rainhas Minadas, na Arquitetura Elm:
 
-  - `Model`: o estado completo da aplicação, num único valor imutável.
-  - `Msg`: tudo o que pode acontecer (cliques, respostas HTTP...).
-  - `update`: recebe uma `Msg` e o `Model`, devolve o novo `Model` e os
+- `Model`: o estado completo da aplicação, num único valor imutável.
+- `Msg`: tudo o que pode acontecer (cliques, respostas HTTP, ticks do tempo...).
+- `update`: recebe uma `Msg` e o `Model`, devolve o novo `Model` e os
     efeitos a executar.
-  - `view`: recebe o `Model` e devolve o `Html`.
+- `view`: recebe o `Model` e devolve o `Html`.
 
 -}
 
@@ -17,6 +17,7 @@ import Html.Attributes exposing (attribute, checked, class, classList, disabled,
 import Html.Events exposing (onCheck, onClick)
 import Rainhas exposing (Board, Cell(..), Origin(..), Position)
 import Set exposing (Set)
+import Time
 
 
 
@@ -29,8 +30,17 @@ main =
         { init = init
         , update = update
         , view = view
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    if not model.loading && not (Rainhas.isComplete model.board) then
+        Time.every 1000 Tick
+
+    else
+        Sub.none
 
 
 
@@ -50,6 +60,7 @@ type alias Model =
     , darkTheme : Bool
     , loading : Bool
     , error : Maybe String
+    , seconds : Int
     }
 
 
@@ -60,6 +71,7 @@ init flags =
       , darkTheme = flags.darkTheme
       , loading = True
       , error = Nothing
+      , seconds = 0
       }
     , Api.generate Medium GotPuzzle
     )
@@ -84,13 +96,14 @@ type Msg
     | GotSolution (Result String (Set Position))
     | ResetRequested
     | ErrorDismissed
+    | Tick Time.Posix
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NewGame difficulty ->
-            ( { model | difficulty = difficulty, loading = True, error = Nothing }
+            ( { model | difficulty = difficulty, loading = True, error = Nothing, seconds = 0 }
             , Api.generate difficulty GotPuzzle
             )
 
@@ -135,10 +148,13 @@ update msg model =
             ( failed error model, Cmd.none )
 
         ResetRequested ->
-            ( { model | board = Rainhas.clear model.board, error = Nothing }, Cmd.none )
+            ( { model | board = Rainhas.clear model.board, error = Nothing, seconds = 0 }, Cmd.none )
 
         ErrorDismissed ->
             ( { model | error = Nothing }, Cmd.none )
+
+        Tick _ ->
+            ( { model | seconds = model.seconds + 1 }, Cmd.none )
 
 
 failed : String -> Model -> Model
@@ -172,6 +188,8 @@ view model =
                     , div [ class "message-area" ] [ viewMessages model ]
                     , span [ class "panel-label" ] [ text "Rainhas" ]
                     , viewQueenCounter model.board
+                    , span [ class "panel-label" ] [ text "Tempo" ]
+                    , viewTimer model.seconds
                     , span [ class "panel-label" ] [ text "Ajuda" ]
                     , viewActions model
                     ]
@@ -260,6 +278,27 @@ viewQueenCounter : Board -> Html Msg
 viewQueenCounter board =
     div [ class "queen-counter" ]
         [ text (String.fromInt (Rainhas.queenCount board) ++ " de " ++ String.fromInt board.size) ]
+
+
+viewTimer : Int -> Html Msg
+viewTimer totalSeconds =
+    div [ class "queen-counter" ]
+        [ text (formatTime totalSeconds) ]
+
+
+formatTime : Int -> String
+formatTime totalSeconds =
+    let
+        mins =
+            totalSeconds // 60
+
+        secs =
+            remainderBy 60 totalSeconds
+
+        pad n =
+            String.padLeft 2 '0' (String.fromInt n)
+    in
+    pad mins ++ ":" ++ pad secs
 
 
 {-| O tamanho do tabuleiro muda com o nível (6, 7 ou 8). O Elm passa o
