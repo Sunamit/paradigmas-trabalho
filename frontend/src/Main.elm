@@ -2,11 +2,11 @@ module Main exposing (main)
 
 {-| Interface do Rainhas Minadas, na Arquitetura Elm:
 
-- `Model`: o estado completo da aplicação, num único valor imutável.
-- `Msg`: tudo o que pode acontecer (cliques, respostas HTTP, ticks do tempo...).
-- `update`: recebe uma `Msg` e o `Model`, devolve o novo `Model` e os
+  - `Model`: o estado completo da aplicação, num único valor imutável.
+  - `Msg`: tudo o que pode acontecer (cliques, respostas HTTP, ticks do tempo...).
+  - `update`: recebe uma `Msg` e o `Model`, devolve o novo `Model` e os
     efeitos a executar.
-- `view`: recebe o `Model` e devolve o `Html`.
+  - `view`: recebe o `Model` e devolve o `Html`.
 
 -}
 
