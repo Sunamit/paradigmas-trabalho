@@ -144,18 +144,49 @@ Cada casa do tabuleiro é uma variável que vale 0 ou 1 (1 = rainha), e cada reg
 
 ### 5.3 Trecho em destaque
 
-<!--
-  Escolha o trecho de Prolog de que o grupo mais se orgulha (ou o mais
-  difícil). Cole o código e explique como ele funciona: o que é declarado,
-  como o Prolog chega à resposta, e por que essa solução é "lógica" e não
-  uma tradução de um algoritmo imperativo.
--->
+As regras das rainhas, em `board_constraints/2` e `squares/2` (`rainhas.pl:55` a `98`; alguns comentários foram encurtados aqui):
 
 ```prolog
-[trecho]
+board_constraints(N, Queens) :-
+    length(Queens, N),
+    maplist(same_length(Queens), Queens),
+    append(Queens, Cells),
+    Cells ins 0..1,
+
+    % Uma rainha por linha: a soma dos 0/1 da linha é 1.
+    maplist(exactly_one, Queens),
+
+    % Uma rainha por coluna: mesma restrição sobre a grade transposta.
+    transpose(Queens, Columns),
+    maplist(exactly_one, Columns),
+
+    % Nenhuma rainha encostada: em todo quadrado 2x2 há no máximo uma.
+    no_touching(Queens).
+
+exactly_one(Cells) :-
+    sum(Cells, #=, 1).
+
+no_touching([_]).
+no_touching([Upper, Lower | Rest]) :-
+    squares(Upper, Lower),
+    no_touching([Lower | Rest]).
+
+squares([_], [_]).
+squares([A, B | As], [C, D | Cs]) :-
+    A + B + C + D #=< 1,
+    squares([B | As], [D | Cs]).
 ```
 
-[Explicação.]
+**O que é declarado:**
+
+- O tabuleiro é uma lista de N linhas com N variáveis cada, e `Cells ins 0..1` diz que cada casa vale 0 (vazia) ou 1 (rainha).
+- "Uma rainha por linha" vira literalmente "a soma da linha é 1" (`exactly_one/1`). Para as colunas, usamos a mesma regra sobre a grade transposta (`transpose/2`), sem escrever código novo.
+- "Nenhuma rainha encostada" vira "todo quadrado 2×2 tem soma no máximo 1". O `no_touching/1` pega as linhas de duas em duas, e o `squares/2` desliza uma janela 2×2 por elas, casando o padrão `[A, B | As]` com `[C, D | Cs]`.
+- O truque do 2×2: duas casas vizinhas, inclusive na diagonal, sempre dividem algum quadrado 2×2. Por isso essa única restrição cobre todos os tipos de contato, sem precisar tratar diagonais separadamente.
+
+**Como o Prolog chega à resposta:** este predicado não procura nada; ele só monta as restrições. Ao receber cada restrição, o CLP(FD) já elimina valores impossíveis (por exemplo, quando uma casa da linha vira 1, as outras são forçadas a 0). Depois, o `labeling/2` em `solve/2` (`rainhas.pl:162`) tenta valores para as casas que sobraram e, se uma restrição falha, o backtracking do Prolog volta atrás e tenta outro valor.
+
+**Por que é lógico e não imperativo:** não há nenhum laço de busca, nenhum "coloque uma rainha, verifique, remova" escrito por nós. O código descreve *o que* é um tabuleiro válido, quase com as mesmas palavras das regras do jogo, e deixa *como* encontrá-lo para o resolvedor. As mesmas restrições servem para resolver (`solve/2`), contar soluções (`count_solutions/3`), sortear um tabuleiro (`random_solution/2`) e dar dicas (`hint/3`), mudando apenas o que é feito depois de declará-las.
 
 ## 6. Parte em Elm
 
