@@ -9,6 +9,7 @@
 | Sunamita Vitória Rodrigues dos Santos | 221008697 | 14h | @Sunamit |
 | Pedro Paulo Santos Almeida | 221008688 | 14h | @Pedrin0030 |
 | Isabelle da Costa Figueiredo | 211039500 | 14h | @isacostaf |
+| João Paulo Barros de Cristo | 202023805 | 14h | @joaopb1-xps |
 
 - **Nome do projeto:** Rainhas Minadas
 - **Nome do grupo:** Rainhas Minadas
