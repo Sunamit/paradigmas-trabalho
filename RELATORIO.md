@@ -1,63 +1,24 @@
-<!--
-  TEMPLATE DO RELATÓRIO DE ENTREGA: Paradigmas de Programação
-
-  Como usar:
-  - Copie este arquivo para a raiz do repositório do grupo, com o nome
-    RELATORIO.md, e preencha todas as seções.
-  - Os textos entre <!- - e - -> (como este) são instruções. Eles não
-    aparecem quando o arquivo é visualizado, mas APAGUE-OS antes de entregar.
-  - Troque tudo o que estiver entre [colchetes].
-  - Seja direto. Frases curtas e listas valem mais que parágrafos longos.
-    Um relatório típico cabe em 4 a 8 páginas.
-  - O relatório e o código são avaliados juntos. Sempre que possível,
-    aponte para o código (arquivo e linha) em vez de descrevê-lo. Os
-    critérios de avaliação estão em AVALIACAO.md.
-  - ANTES DE ENTREGAR, rode o validador na raiz do repositório:
-
-        uv run scripts/validar_entrega.py
-
-    Ele confere a FORMA do relatório (comentários apagados, colchetes
-    preenchidos, tabelas bem formadas, seções presentes, arquivos
-    existentes), não o conteúdo. Corrija todos os ERROS apontados.
--->
-
-# [Nome do projeto]
+# Rainhas Minadas
 
 ## 1. Identificação
 
-<!--
-  Os grupos têm de 3 a 7 pessoas (5, em média). A tabela abaixo tem 5
-  linhas: adicione ou remova linhas conforme o tamanho do seu grupo, aqui e
-  na seção 10. Os grupos podem misturar alunos das turmas das 14h e das 16h:
-  indique a turma de CADA integrante.
--->
-
 | Nome completo | Matrícula | Turma (14h/16h) | Usuário GitHub |
 |---------------|-----------|-----------------|----------------|
-| [Nome]        | [000000]  | [14h]           | [@usuario]     |
-| [Nome]        | [000000]  | [16h]           | [@usuario]     |
-| [Nome]        | [000000]  | [14h]           | [@usuario]     |
-| [Nome]        | [000000]  | [16h]           | [@usuario]     |
-| [Nome]        | [000000]  | [14h]           | [@usuario]     |
+| Arthur Fonseca Vale | 221031120 | 14h | @arthurfonsecaa |
+| Ana Carolina Madeira Fialho | 221031102 | 14h | @anawcarol |
+| Sunamita Vitória Rodrigues dos Santos | 221008697 | 14h | @Sunamit |
+| Pedro Paulo Santos Almeida | 221008688 | 14h | @Pedrin0030 |
+| Isabelle da Costa Figueiredo | 211039500 | 14h | @isacostaf |
 
-- **Nome do projeto:** [o mesmo do título acima]
-- **Nome do grupo:** [um nome criativo, que não se repita na turma]
-  <!--
-    O nome do grupo identifica vocês nas planilhas de notas e na chamada
-    para a apresentação. Não dá para validar se é único, então caprichem:
-    "Grupo 3" vai colidir com o "Grupo 3" da outra turma.
-  -->
-- **Repositório:** [https://github.com/...]
+- **Nome do projeto:** Rainhas Minadas
+- **Nome do grupo:** Rainhas Minadas
+- **Repositório:** https://github.com/Sunamit/paradigmas-trabalho
 - **Commit ou tag entregue:** [`a1b2c3d` ou `v1.0`]
   <!--
     O avaliador vai olhar exatamente esta versão. Para criar uma tag:
       git tag v1.0 && git push origin v1.0
   -->
-- **Ponto de partida:** [template do Sudoku com ajustes | variante do Sudoku | outro jogo conhecido | remix original | jogo inventado]
-  <!--
-    Escolha UMA faixa. Ela define o ajuste de escopo da nota do grupo
-    (AVALIACAO.md, seção 1.5). O professor confirma a faixa na apresentação.
-  -->
+- **Ponto de partida:** Remix original
 - **Slides da apresentação oral:** [`docs/apresentacao.pdf` | link externo | não há]
   <!--
     No final do semestre, cada grupo faz uma apresentação oral de 15
@@ -67,60 +28,80 @@
 
 ## 2. Resumo
 
-<!--
-  De 3 a 5 linhas: o que o sistema faz, para quem, e qual problema o
-  Prolog resolve nele. Quem ler só esta seção deve entender o projeto.
--->
+Rainhas Minadas é um jogo de raciocínio que mistura N-rainhas com Campo Minado. O jogador coloca N rainhas num tabuleiro N×N (6×6, 7×7 ou 8×8): uma por linha e por coluna, sem que duas se encostem, nem na diagonal. Casas com número não têm rainha, e o número indica quantas rainhas há nas 8 casas ao redor. Todo puzzle tem solução única.
 
-[Resumo do projeto.]
+O Prolog é o cérebro do sistema: cada regra do jogo vira uma restrição CLP(FD), e o mesmo código resolve o puzzle, gera puzzles com solução única e calcula dicas. O Elm cuida da interface e da verificação instantânea de conflitos.
 
-![Captura de tela do sistema](docs/captura.png)
-<!-- Uma ou duas capturas de tela da interface. Crie a pasta docs/ se precisar. -->
+![Captura de tela do sistema](docs\Screenshot_934.png)
 
 ## 3. Como executar
 
-<!--
-  Teste estas instruções numa máquina "limpa" (ou peça a um colega de
-  outro grupo). Se o avaliador não conseguir rodar o sistema, o resto do
-  trabalho não pode ser verificado.
--->
-
 **Requisitos** (com as versões que o grupo usou):
 
-- SWI-Prolog [9.x]
-- Node.js [2x.x]
-- [uv / Python 3.x, se usar]
+- SWI-Prolog 10.0.2 (macOS) e 11.0.0 (Windows); a biblioteca janus exige 9.2 ou mais novo
+- Node.js 24.15.0 (20 ou mais novo)
+- uv 0.13.9 e Python 3.11 ou mais novo (o uv instala o Python sozinho)
+
+No Windows, o `janus-swi` é compilado na instalação, então também são necessárias as Build Tools do C++ (carga de trabalho "Desenvolvimento para desktop com C++").
 
 **Instalação e execução:**
 
 ```sh
-[comandos exatos, na ordem]
+git clone https://github.com/Sunamit/paradigmas-trabalho.git
+cd paradigmas-trabalho
+cd backend && uv sync && cd ..
+cd frontend && npm install && cd ..
+```
+
+Em seguida, em **dois terminais**:
+
+```sh
+# terminal 1: backend (http://localhost:8000/docs)
+cd backend
+uv run fastapi dev app/main.py
+```
+
+```sh
+# terminal 2: frontend (http://localhost:5173)
+cd frontend
+npm run dev
 ```
 
 **Testes:**
 
 ```sh
-[comando para rodar os testes, se houver]
+make test
 ```
 
-**Testado em:** [Linux / Windows / macOS, navegador]
+Sem `make` (Windows):
+
+```sh
+swipl -g run_tests -t halt backend/prolog/test_rainhas.pl
+cd backend && uv run pytest 
+```
+
+**Testado em:** macOS + Chrome e Windows 11 + Chrome.
 
 ## 4. Arquitetura
 
-<!--
-  Um diagrama simples (pode ser em texto) mostrando as partes do sistema e
-  como elas se comunicam. Diga em uma frase a responsabilidade de cada parte.
--->
-
 ```
-[Elm] --HTTP/JSON--> [Python] --janus--> [Prolog]
+┌────────────────────────┐             ┌─────────────────────┐         ┌────────────────────┐
+│ Navegador              │             │ FastAPI (Python)    │         │ SWI-Prolog         │
+│                        │             │                     │         │                    │
+│ Elm                    │  HTTP/JSON  │ app/main.py         │  janus  │ rainhas.pl         │
+│ Rainhas.elm (domínio)  │ ──────────▶ │ app/prolog.py       │ ──────▶ │ CLP(FD)            │
+│ Api.elm (HTTP/JSON)    │ ◀────────── │                     │ ◀────── │ solve/2, generate/2│
+│ Main.elm (interface)   │             │ só integração       │         │ hint/3             │
+│                        │             │                     │         │                    │
+└────────────────────────┘             └─────────────────────┘         └────────────────────┘
+  porta 5173                           porta 8000                (roda dentro do Python)
 ```
 
 | Parte  | Responsabilidade | Arquivos principais |
 |--------|------------------|---------------------|
-| Prolog | [...]            | [`backend/prolog/...`] |
-| Elm    | [...]            | [`frontend/src/...`]   |
-| Python | [só integração]  | [`backend/app/...`]    |
+| Prolog | Regras do jogo, resolvedor, gerador de puzzles com solução única e dica | `backend/prolog/rainhas.pl` |
+| Elm    | Interface, verificação instantânea de conflitos e estado do jogo | `frontend/src/Rainhas.elm`, `frontend/src/Api.elm`, `frontend/src/Main.elm` |
+| Python | Só integração: recebe JSON, chama o Prolog e devolve JSON | `backend/app/prolog.py`, `backend/app/main.py` |
 
 ## 5. Parte em Prolog
 
